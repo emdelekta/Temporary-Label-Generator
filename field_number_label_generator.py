@@ -101,16 +101,16 @@ class LabelApp:
 
         # Set font
         regular_font_path = os.path.join(
-            "fonts", "WorkSans", "Fonts", "WEB", "fonts", "WorkSans-Regular.ttf"
+            "fonts", "WorkSans", "WorkSans-Regular.ttf"
         )
         italic_font_path = os.path.join(
-            "fonts", "WorkSans", "Fonts", "WEB", "fonts", "WorkSans-Italic.ttf"
+            "fonts", "WorkSans", "WorkSans-Italic.ttf"
         )
         bold_font_path = os.path.join(
-            "fonts", "WorkSans", "Fonts", "WEB", "fonts", "WorkSans-Bold.ttf"
+            "fonts", "WorkSans", "WorkSans-Bold.ttf"
         )
         bolditalic_font_path = os.path.join(
-            "fonts", "WorkSans", "Fonts", "WEB", "fonts", "WorkSans-BoldItalic.ttf"
+            "fonts", "WorkSans", "WorkSans-BoldItalic.ttf"
         )
         pdfmetrics.registerFont(TTFont("WorkSans-Regular", regular_font_path))
         pdfmetrics.registerFont(TTFont("WorkSans-Italic", italic_font_path))
