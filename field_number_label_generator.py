@@ -90,7 +90,7 @@ class LabelApp:
 
         # ---------- FONT SETUP (matches your folder screenshot) ----------
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        fonts_dir = os.path.join(script_dir, "fonts")
+        fonts_dir = os.path.join(script_dir, "fonts", "WorkSans")
 
         pdfmetrics.registerFont(TTFont("WorkSans-Regular", os.path.join(fonts_dir, "WorkSans-Regular.ttf")))
         pdfmetrics.registerFont(TTFont("WorkSans-Italic", os.path.join(fonts_dir, "WorkSans-Italic.ttf")))
@@ -110,12 +110,18 @@ class LabelApp:
             name="Body",
             fontName="WorkSans-Regular",
             fontSize=FONT_SIZE,
+            leading=FONT_SIZE,
+            spaceBefore=0,
+            spaceAfter=0,
         )
 
         taxon_style = ParagraphStyle(
             name="Taxon",
             fontName="WorkSans-Italic",
             fontSize=FONT_SIZE,
+            leading=FONT_SIZE,
+            spaceBefore=0,
+            spaceAfter=0,
         )
 
         label_w = 2.5 * inch
@@ -185,6 +191,7 @@ class LabelApp:
             label.setStyle(
                 TableStyle(
                     [
+                        ("BOX", (0, 0), (-1, -1), 0.5, colors.black, 1, (1, 2)),
                         ("SPAN", (0, 1), (1, 1)),
                         ("SPAN", (0, 2), (1, 2)),
                         ("SPAN", (0, 3), (1, 3)),
@@ -194,8 +201,8 @@ class LabelApp:
                         ("ALIGN", (1, 0), (1, 0), "RIGHT"),
                         ("LEFTPADDING", (0, 0), (-1, -1), 3),
                         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-                        ("TOPPADDING", (0, 0), (-1, -1), 2),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0.5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0.5),
                     ]
                 )
             )
