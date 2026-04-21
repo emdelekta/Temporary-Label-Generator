@@ -9,6 +9,10 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.graphics.barcode import code128
 import os
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+applog = logging.getLogger(__name__)
 
 
 class LabelApp:
@@ -18,53 +22,41 @@ class LabelApp:
 
         self.master_df = None
         self.query_df = None
-
         self.downloads_path = os.path.expanduser("~/Downloads")
 
         self.master_label = tk.Label(root, text="Master: NOT LOADED", fg="red")
         self.master_label.pack()
 
-        tk.Button(
-            root, text="1. Load MASTER Spreadsheet", command=self.load_master
-        ).pack(pady=5)
+        tk.Button(root, text="1. Load MASTER Spreadsheet", command=self.load_master).pack(pady=5)
 
         self.query_label = tk.Label(root, text="Field List: NOT LOADED", fg="red")
         self.query_label.pack()
 
-        tk.Button(root, text="2. Load FIELD NUMBER List", command=self.load_query).pack(
-            pady=5
-        )
+        tk.Button(root, text="2. Load FIELD NUMBER List", command=self.load_query).pack(pady=5)
 
-        tk.Button(
-            root, text="3. Generate Label Sheet", command=self.generate_labels
-        ).pack(pady=10)
+        tk.Button(root, text="3. Generate Label Sheet", command=self.generate_labels).pack(pady=10)
 
     def load_master(self):
         path = filedialog.askopenfilename(
-            initialdir=self.downloads_path, filetypes=[("Excel files", "*.xlsx *.xls")]
+            initialdir=self.downloads_path,
+            filetypes=[("Excel files", "*.xlsx *.xls")],
         )
         if path:
-            try:
-                self.master_df = pd.read_excel(path)
-                self.master_label.config(text="Master: LOADED", fg="green")
-            except Exception as e:
-                messagebox.showerror("Error", str(e))
+            self.master_df = pd.read_excel(path)
+            self.master_df = self.master_df.astype(str).replace(r'\.0$', '', regex=True)
+            self.master_label.config(text="Master: LOADED", fg="green")
 
     def load_query(self):
         path = filedialog.askopenfilename(
-            initialdir=self.downloads_path, filetypes=[("Excel files", "*.xlsx *.xls")]
+            initialdir=self.downloads_path,
+            filetypes=[("Excel files", "*.xlsx *.xls")],
         )
         if path:
-            try:
-                self.query_df = pd.read_excel(path)
-                self.query_label.config(text="Field List: LOADED", fg="green")
-            except Exception as e:
-                messagebox.showerror("Error", str(e))
+            self.query_df = pd.read_excel(path)
+            self.query_label.config(text="Field List: LOADED", fg="green")
 
     def safe(self, v):
-        if pd.isna(v):
-            return ""
-        return str(v).strip()
+        return "" if pd.isna(v) else str(v).strip()
 
     def generate_labels(self):
         if self.master_df is None or self.query_df is None:
@@ -90,42 +82,41 @@ class LabelApp:
             defaultextension=".pdf",
             filetypes=[("PDF", "*.pdf")],
         )
-        if not file_path:
-            return
-
-        self.create_pdf(records, file_path)
-
+        if file_path:
+            self.create_pdf(records, file_path)
 
     def create_pdf(self, records, file_path):
         doc = SimpleDocTemplate(file_path, pagesize=(8.5 * inch, 11 * inch))
 
-        # Set font
-        regular_font_path = os.path.join(
-            "fonts", "WorkSans", "WorkSans-Regular.ttf"
-        )
-        italic_font_path = os.path.join(
-            "fonts", "WorkSans", "WorkSans-Italic.ttf"
-        )
-        bold_font_path = os.path.join(
-            "fonts", "WorkSans", "WorkSans-Bold.ttf"
-        )
-        bolditalic_font_path = os.path.join(
-            "fonts", "WorkSans", "WorkSans-BoldItalic.ttf"
-        )
-        pdfmetrics.registerFont(TTFont("WorkSans-Regular", regular_font_path))
-        pdfmetrics.registerFont(TTFont("WorkSans-Italic", italic_font_path))
-        pdfmetrics.registerFont(TTFont("WorkSans-Bold", bold_font_path))
-        pdfmetrics.registerFont(TTFont("WorkSans-BoldItalic", bolditalic_font_path))
+        # ---------- FONT SETUP (matches your folder screenshot) ----------
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        fonts_dir = os.path.join(script_dir, "fonts")
+
+        pdfmetrics.registerFont(TTFont("WorkSans-Regular", os.path.join(fonts_dir, "WorkSans-Regular.ttf")))
+        pdfmetrics.registerFont(TTFont("WorkSans-Italic", os.path.join(fonts_dir, "WorkSans-Italic.ttf")))
+        pdfmetrics.registerFont(TTFont("WorkSans-Bold", os.path.join(fonts_dir, "WorkSans-Bold.ttf")))
+        # ---------------------------------------------------------------
 
         FONT_SIZE = 7
 
         field_style = ParagraphStyle(
-            name="Field", fontName="WorkSans-Bold", fontSize=FONT_SIZE + 2, leading=FONT_SIZE + 2
+            name="Field",
+            fontName="WorkSans-Bold",
+            fontSize=FONT_SIZE + 2,
+            leading=FONT_SIZE + 2,
         )
 
-        body_style = ParagraphStyle(name="Body", fontName="WorkSans-Regular", fontSize=FONT_SIZE)
+        body_style = ParagraphStyle(
+            name="Body",
+            fontName="WorkSans-Regular",
+            fontSize=FONT_SIZE,
+        )
 
-        taxon_style = ParagraphStyle(name="Taxon", fontName="WorkSans-Italic", fontSize=FONT_SIZE)
+        taxon_style = ParagraphStyle(
+            name="Taxon",
+            fontName="WorkSans-Italic",
+            fontSize=FONT_SIZE,
+        )
 
         label_w = 2.5 * inch
         label_h = 2.0 * inch
@@ -136,16 +127,31 @@ class LabelApp:
         for _, r in records.iterrows():
             fn = self.safe(r.get("Field Number"))
             count = self.safe(r.get("Count"))
-
             n_text = f"n = {count}" if count else "n = __"
 
             barcode = code128.Code128(fn, barHeight=0.35 * inch, barWidth=0.01 * inch)
 
             clade = self.safe(r.get("Clade/Family"))
+            applog.debug(f"Clade/Family: '{clade}'")
             genus = self.safe(r.get("Genus"))
-            species = self.safe(r.get("Species"))
+            applog.debug(f"Genus: '{genus}'")
+            species = self.safe(r.get("species"))
+            applog.debug(f"Species: '{species}'")
+            gensp = " ".join(x for x in [genus, species] if x)
+            applog.debug(f"Genus/Species: '{gensp}'")
 
-            gensp = " ".join([x for x in [genus, species] if x])
+            taxon_parts = []
+            
+            if clade:
+                taxon_parts.append(clade)
+
+            if gensp:
+                taxon_parts.append(
+                    f'<font name="WorkSans-Italic">{gensp}</font>'
+                )
+
+            taxon_para = Paragraph(" ".join(taxon_parts), body_style)
+
 
             lat = self.safe(r.get("End Lat"))
             lon = self.safe(r.get("End Long"))
@@ -164,18 +170,11 @@ class LabelApp:
 
             date = self.safe(r.get("Date Collected"))
 
-            # TRUE CORNER LAYOUT TABLE
             label = Table(
                 [
-                    [
-                        Paragraph(fn, field_style),
-                        Paragraph(n_text, body_style),
-                    ],
+                    [Paragraph(fn, field_style), Paragraph(n_text, body_style)],
                     [barcode, ""],
-                    [
-                        Paragraph(clade, body_style),
-                        Paragraph(gensp, taxon_style),
-                    ],
+                    [taxon_para, ""],
                     [Paragraph(coord, body_style), ""],
                     [Paragraph(depth, body_style), ""],
                     [Paragraph(date, body_style), ""],
@@ -191,8 +190,6 @@ class LabelApp:
                         ("SPAN", (0, 3), (1, 3)),
                         ("SPAN", (0, 4), (1, 4)),
                         ("SPAN", (0, 5), (1, 5)),
-                        ("GRID", (0, 0), (-1, -1), 0.25, colors.transparent),
-                        ("LINESTYLE", (0, 0), (-1, -1), "dotted"),
                         ("VALIGN", (0, 0), (-1, -1), "TOP"),
                         ("ALIGN", (1, 0), (1, 0), "RIGHT"),
                         ("LEFTPADDING", (0, 0), (-1, -1), 3),
@@ -205,9 +202,7 @@ class LabelApp:
 
             labels.append(label)
 
-        grid = []
-        row = []
-
+        grid, row = [], []
         for i, l in enumerate(labels):
             row.append(l)
             if (i + 1) % cols == 0:
@@ -220,17 +215,6 @@ class LabelApp:
             grid.append(row)
 
         master = Table(grid, colWidths=[label_w] * cols)
-
-        master.setStyle(
-            TableStyle(
-                [
-                    ("GRID", (0, 0), (-1, -1), 0.25, colors.black),
-                    ("LINESTYLE", (0, 0), (-1, -1), "dotted"),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ]
-            )
-        )
-
         doc.build([master])
         messagebox.showinfo("Done", "Labels created successfully.")
 
