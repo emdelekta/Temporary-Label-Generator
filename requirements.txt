@@ -1,0 +1,8 @@
+pandas
+reportlab
+openpyxl
+
+# NOTICE: tkinkter is required for the GUI.
+# -- sometimes it is bundled to a Python distribution, but not always.
+# -- If you get an error about tkinkter, try installing it with:
+# -- pip install tk
