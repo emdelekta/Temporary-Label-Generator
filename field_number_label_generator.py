@@ -24,6 +24,9 @@ class LabelApp:
         self.query_df = None
         self.downloads_path = os.path.expanduser("~/Downloads")
 
+        self.cruise_year = tk.StringVar()
+        self.box_number = tk.StringVar()
+
         self.master_label = tk.Label(root, text="Master: NOT LOADED", fg="red")
         self.master_label.pack()
 
@@ -33,6 +36,14 @@ class LabelApp:
         self.query_label.pack()
 
         tk.Button(root, text="2. Load FIELD NUMBER List", command=self.load_query).pack(pady=5)
+
+        meta_frame = tk.LabelFrame(root, text="Additional Information")
+        meta_frame.pack(pady=10, padx=10, fill="x")
+
+        tk.Label(meta_frame, text="Cruise Year:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
+        tk.Entry(meta_frame, textvariable=self.cruise_year, width=15).grid(row=0, column=1, sticky="w", padx=5)
+        tk.Label(meta_frame, text="Box Number:").grid(row=0, column=2, sticky="e", padx=5, pady=2)
+        tk.Entry(meta_frame, textvariable=self.box_number, width=15).grid(row=0, column=3, sticky="w", padx=5)   
 
         tk.Button(root, text="3. Generate Label Sheet", command=self.generate_labels).pack(pady=10)
 
@@ -76,6 +87,11 @@ class LabelApp:
         if records.empty:
             messagebox.showerror("Error", "No matches found.")
             return
+        
+        cruise_year = self.cruise_year.get().strip()
+        box_number = self.box_number.get().strip()
+        applog.debug(f"Cruise (GUI): '{cruise_year}'")
+        applog.debug(f"Box (GUI): '{box_number}'")
 
         file_path = filedialog.asksaveasfilename(
             initialdir=self.downloads_path,
@@ -83,14 +99,14 @@ class LabelApp:
             filetypes=[("PDF", "*.pdf")],
         )
         if file_path:
-            self.create_pdf(records, file_path)
+            self.create_pdf(records, file_path, cruise_year, box_number)
 
-    def create_pdf(self, records, file_path):
+    def create_pdf(self, records, file_path, cruise_year, box_number):
         doc = SimpleDocTemplate(file_path, pagesize=(8.5 * inch, 11 * inch))
 
         # ---------- FONT SETUP (matches your folder screenshot) ----------
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        fonts_dir = os.path.join(script_dir, "fonts")
+        fonts_dir = os.path.join(script_dir, "fonts", "WorkSans")
 
         pdfmetrics.registerFont(TTFont("WorkSans-Regular", os.path.join(fonts_dir, "WorkSans-Regular.ttf")))
         pdfmetrics.registerFont(TTFont("WorkSans-Italic", os.path.join(fonts_dir, "WorkSans-Italic.ttf")))
@@ -102,20 +118,43 @@ class LabelApp:
         field_style = ParagraphStyle(
             name="Field",
             fontName="WorkSans-Bold",
-            fontSize=FONT_SIZE + 2,
+            fontSize=FONT_SIZE + 4,
             leading=FONT_SIZE + 2,
+            alignment=1,
         )
 
         body_style = ParagraphStyle(
             name="Body",
             fontName="WorkSans-Regular",
             fontSize=FONT_SIZE,
+            leading=FONT_SIZE,
+            spaceBefore=0,
+            spaceAfter=0,
+        )
+
+        additional_label_style = ParagraphStyle(
+            name="AdditionalLabel",
+            fontName="WorkSans-Regular",
+            fontSize=FONT_SIZE,
+            leading=FONT_SIZE,
+            alignment=1,  # Center
+        )
+
+        additional_value_style = ParagraphStyle(
+            name="AdditionalValue",
+            fontName="WorkSans-Regular",
+            fontSize=FONT_SIZE,
+            leading=FONT_SIZE,
+            alignment=1,  # Center
         )
 
         taxon_style = ParagraphStyle(
             name="Taxon",
             fontName="WorkSans-Italic",
             fontSize=FONT_SIZE,
+            leading=FONT_SIZE,
+            spaceBefore=0,
+            spaceAfter=0,
         )
 
         label_w = 2.5 * inch
@@ -127,8 +166,7 @@ class LabelApp:
         for _, r in records.iterrows():
             fn = self.safe(r.get("Field Number"))
             count = self.safe(r.get("Count"))
-            n_text = f"n = {count}" if count else "n = __"
-
+            n_text = f'<font name="WorkSans-Italic">n</font> = {count}' if count else f'<font name="WorkSans-Italic">n</font> = __'
             barcode = code128.Code128(fn, barHeight=0.35 * inch, barWidth=0.01 * inch)
 
             clade = self.safe(r.get("Clade/Family"))
@@ -170,32 +208,65 @@ class LabelApp:
 
             date = self.safe(r.get("Date Collected"))
 
+            cruise_block = Paragraph(f"<u>Cruise</u><br/>{cruise_year}", additional_label_style,)
+            applog.debug(f"Cruise: '{cruise_year}'")
+            box_block = Paragraph(f"<u>Box</u><br/>{box_number}", additional_label_style,)
+            applog.debug(f"Box: '{box_number}'")
+
+            additional_table = Table(
+                [
+                    [cruise_block],
+                    [box_block],
+                ],
+                colWidths=[label_w * 0.3],
+                rowHeights=[None, None],
+            )
+
+            additional_table.setStyle(
+                TableStyle(
+                    [            
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),  
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),           
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ]
+                )
+            )
+
             label = Table(
                 [
                     [Paragraph(fn, field_style), Paragraph(n_text, body_style)],
-                    [barcode, ""],
+                    [barcode, additional_table],
                     [taxon_para, ""],
                     [Paragraph(coord, body_style), ""],
                     [Paragraph(depth, body_style), ""],
                     [Paragraph(date, body_style), ""],
                 ],
                 colWidths=[label_w * 0.7, label_w * 0.3],
+                rowHeights=[
+                    0.28 * inch,  # Field number and n
+                    0.42 * inch, # Barcode and additional info
+                    None, None, None, None
+                ]
             )
 
             label.setStyle(
                 TableStyle(
                     [
-                        ("SPAN", (0, 1), (1, 1)),
+                        ("BOX", (0, 0), (-1, -1), 0.5, colors.black, 1, (1, 2)),
+                        #("SPAN", (0, 1), (1, 1)),
                         ("SPAN", (0, 2), (1, 2)),
                         ("SPAN", (0, 3), (1, 3)),
                         ("SPAN", (0, 4), (1, 4)),
                         ("SPAN", (0, 5), (1, 5)),
                         ("VALIGN", (0, 0), (-1, -1), "TOP"),
                         ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                        ("ALIGN", (1, 1), (1, 1), "CENTER"),
+                        ("VALIGN", (1, 1), (1, 1), "TOP"),
                         ("LEFTPADDING", (0, 0), (-1, -1), 3),
                         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-                        ("TOPPADDING", (0, 0), (-1, -1), 2),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0.5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0.5),
                     ]
                 )
             )

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Field Number Label Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    main {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      padding: 2.5rem 3rem;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+      color: #111;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #666;
+      margin-bottom: 2rem;
+    }
+
+    .field {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 0.4rem;
+    }
+
+    .step-badge {
+      display: inline-block;
+      background: #1a56db;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      background: #fafafa;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    input[type="file"]:focus {
+      outline: none;
+      border-color: #1a56db;
+      background: #fff;
+    }
+
+    .meta-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .meta-group .field { margin-bottom: 0; }
+
+    input[type="text"] {
+      display: block;
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      background: #fafafa;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #1a56db;
+      background: #fff;
+    }
+
+    button[type="submit"] {
+      display: block;
+      width: 100%;
+      margin-top: 1.75rem;
+      padding: 0.75rem 1rem;
+      background: #1a56db;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    button[type="submit"]:hover:not(:disabled) {
+      background: #1648c0;
+    }
+
+    button[type="submit"]:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 1.25rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .status.loading {
+      background: #eff6ff;
+      color: #1a56db;
+      border: 1px solid #bfdbfe;
+    }
+
+    .status.success {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .status.error {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    .warning {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      background: #fffbeb;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+
+    .warning strong { font-weight: 700; }
+
+    .warning ul {
+      margin-top: 0.35rem;
+      padding-left: 1.2rem;
+    }
+
+    .hidden { display: none; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #bfdbfe;
+      border-top-color: #1a56db;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Field Number Label Generator</h1>
+    <p class="subtitle">Upload both spreadsheets to generate a printable PDF label sheet.</p>
+
+    <form id="uploadForm" novalidate>
+      <div class="field">
+        <label><span class="step-badge">1</span> Master Spreadsheet</label>
+        <input type="file" name="master" id="master" accept=".xlsx,.xls" required />
+      </div>
+
+      <div class="field">
+        <label><span class="step-badge">2</span> Field Number List</label>
+        <input type="file" name="field_list" id="field_list" accept=".xlsx,.xls" required />
+      </div>
+
+      <div class="meta-group">
+        <div class="field">
+          <label>Cruise Year <span style="font-weight:400;color:#888">(optional)</span></label>
+          <input type="text" name="cruise_year" id="cruise_year" placeholder="e.g. 2024" />
+        </div>
+        <div class="field">
+          <label>Box Number <span style="font-weight:400;color:#888">(optional)</span></label>
+          <input type="text" name="box_number" id="box_number" placeholder="e.g. 12" />
+        </div>
+      </div>
+
+      <button type="submit" id="submitBtn">Generate Label Sheet</button>
+    </form>
+
+    <div id="status" class="hidden"></div>
+    <div id="warnings" class="hidden"></div>
+  </main>
+
+  <script>
+    const form = document.getElementById('uploadForm');
+    const statusEl = document.getElementById('status');
+    const warningsEl = document.getElementById('warnings');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const masterFile = document.getElementById('master').files[0];
+      const fieldFile = document.getElementById('field_list').files[0];
+
+      if (!masterFile || !fieldFile) {
+        showStatus('Please select both files before generating.', 'error');
+        return;
+      }
+
+      warningsEl.classList.add('hidden');
+      showStatus('<span class="spinner"></span>Generating labels…', 'loading');
+      submitBtn.disabled = true;
+
+      try {
+        const formData = new FormData(form);
+        const response = await fetch('/generate', { method: 'POST', body: formData });
+
+        if (response.ok) {
+          const warningHeader = response.headers.get('X-Warnings');
+          if (warningHeader) {
+            const missing = warningHeader.split('\t').filter(Boolean);
+            warningsEl.innerHTML =
+              '<strong>Warning — field numbers not found in master:</strong><ul>' +
+              missing.map(n => `<li>${escHtml(n)}</li>`).join('') +
+              '</ul>';
+            warningsEl.className = 'warning';
+          }
+
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'labels.pdf';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          showStatus('Labels generated — your download should start automatically.', 'success');
+        } else {
+          const data = await response.json().catch(() => ({ error: 'Unknown server error.' }));
+          showStatus(escHtml(data.error || 'Unknown error.'), 'error');
+        }
+      } catch (err) {
+        showStatus('Network error: ' + escHtml(err.message), 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    function showStatus(html, type) {
+      statusEl.innerHTML = html;
+      statusEl.className = 'status ' + type;
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>
